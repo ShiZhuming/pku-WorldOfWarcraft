@@ -1,5 +1,13 @@
+#compile files
 *.out
+
+#io files
 *.input
 *.output
+
+#debug files
+make*
 test*
+
+#other files
 example*
