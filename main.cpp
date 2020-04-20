@@ -72,7 +72,7 @@ public:
         }
     }
     void getWeapon(int weaponKind){
-        weapons[weaponKind][weaponNumber] += 1;
+        weapons[weaponKind][weaponNumber] = 1;
         switch (weaponKind)
         {
         case sword:
@@ -82,7 +82,7 @@ public:
             }
             else
             {
-                weapons[sword][weaponNumber] -= 1;// 如果武士降生时得到了一个初始攻击力为0的sword，则视为武士没有sword.
+                weapons[sword][weaponNumber] = 0;// 如果武士降生时得到了一个初始攻击力为0的sword，则视为武士没有sword.
             }
             break;
         case arrow:
@@ -109,6 +109,22 @@ public:
         matchHappened[0] = matchHappened[1] = 0;
         killHappened[0] = killHappened[1] = 0;
     }
+    void refreash(int _id){
+        id = _id;
+        elements = 0;
+        flag = null;
+        lastWin = null;
+        for (int i = 0; i < 2; i++)
+        {
+            if (warriorInCity[i])
+            {
+                delete warriorInCity[i];
+            }
+        }
+        warriorInCity[0] = warriorInCity[1] = NULL;
+        matchHappened[0] = matchHappened[1] = 0;
+        killHappened[0] = killHappened[1] = 0;
+    }
     void lionRunAway();
     void matchPrint();// 同时调整iceman
     void addElements(){elements += 10;}
@@ -122,8 +138,23 @@ public:
     void lionRememberElements();
     void awardElements(int side);
     void reportWeapon(int side);
+    void declareAwardElements();
 };
 CCity citys[25];
+
+void CCity::declareAwardElements()
+{
+    for (int i = 0; i < 2; i++)
+    {
+        if (warriorInCity[red] != NULL && warriorInCity[blue] != NULL && killHappened[i] == 0 && killHappened[1 - i] == 1)
+        {
+            when();
+            printf("%s %s %d earned %d elements for his headquarter\n",sideName[i], warriorName[warriorInCity[i]->kind], warriorInCity[i]->id, elements);
+            // headquarters[i]->elements += elements;
+            // elements = 0;
+        }
+    }
+}
 
 void CCity::reportWeapon(int side)
 {
@@ -182,9 +213,13 @@ void CCity::flagRaise()
     {
         thisTime = red;
     }
-    else
+    else if (killHappened[red] == 1 && killHappened[blue] == 0)
     {
         thisTime = blue;
+    }
+    else// 同归于尽，没啥好改的
+    {
+        return;
     }
     if (thisTime == lastWin && flag != thisTime)// 没有旗帜或者升着败方的旗帜
     {
@@ -216,8 +251,8 @@ void CCity::getElements()
     {
         if (warriorInCity[red] != NULL && warriorInCity[blue] != NULL && killHappened[i] == 0 && killHappened[1 - i] == 1)
         {
-            when();
-            printf("%s %s %d earned %d elements for his headquarter\n",sideName[i], warriorName[warriorInCity[i]->kind], warriorInCity[i]->id, elements);
+            // when();
+            // printf("%s %s %d earned %d elements for his headquarter\n",sideName[i], warriorName[warriorInCity[i]->kind], warriorInCity[i]->id, elements);
             headquarters[i]->elements += elements;
             elements = 0;
         }
@@ -239,7 +274,7 @@ void CCity::dragonYelled()
 {
     for (int i = 0; i < 2; i++)
     {
-        if (warriorInCity[i] != NULL && warriorInCity[1 - 1] != NULL)// 有两个武士来过，视为发生过战斗
+        if (warriorInCity[i] != NULL && warriorInCity[1 - i] != NULL)// 有两个武士来过，视为发生过战斗
         {
             switch (warriorInCity[i]->kind)
             {
@@ -266,10 +301,10 @@ void CCity::dragonYelled()
                 {
                     warriorInCity[i]->loyalty -= K;
                 }
-                if (killHappened[i] == 1)// lion 若是战死，则其战斗前的生命值就会转移到对手身上。
-                {
-                    warriorInCity[1 - i]->elements += warriorInCity[i]->elementsBeforeFight;
-                }
+                // if (killHappened[i] == 1)// lion 若是战死，则其战斗前的生命值就会转移到对手身上。被箭射死就不会
+                // {
+                //     warriorInCity[1 - i]->elements += warriorInCity[i]->elementsBeforeFight;
+                // }
                 break;
             case wolf:
                 if (killHappened[i] == 0 && killHappened[1 - i] == 1)// 对方死了
@@ -322,7 +357,7 @@ void CCity::fight()
     if (currentWarrior->weapons[sword][weaponNumber] > 0)// 有sword
     {
         oppositeWarrior->elements -= currentWarrior->weapons[sword][weaponForce];
-        currentWarrior->weapons[sword][weaponForce] *= 0.8;// sword每经过一次战斗(不论是主动攻击还是反击)，就会变钝，攻击力变为本次战斗前的80% (去尾取整)
+        currentWarrior->weapons[sword][weaponForce] = currentWarrior->weapons[sword][weaponForce]*0.8;//double-check sword每经过一次战斗(不论是主动攻击还是反击)，就会变钝，攻击力变为本次战斗前的80% (去尾取整)
         if (currentWarrior->weapons[sword][weaponForce] <= 0)
         {
             currentWarrior->weapons[sword][weaponForce] = 0;
@@ -334,8 +369,17 @@ void CCity::fight()
         when();
         printf("%s %s %d was killed in city %d\n", sideName[oppositeSide], warriorName[oppositeWarrior->kind], oppositeWarrior->id, id);
         killHappened[oppositeSide] = 1;
+        // getElements();
         // delete oppositeWarrior;
         // warriorInCity[oppositeSide] = NULL;
+        // 名义上获得生命元
+        // when();
+        // printf("%s %s %d earned %d elements for his headquarter\n",sideName[1-oppositeSide], warriorName[currentWarrior->kind], currentWarrior->id, elements);
+        // lion 若是战死，则其战斗前的生命值就会转移到对手身上。被箭射死就不会
+        if (oppositeWarrior->kind == lion)
+        {
+            currentWarrior->elements += oppositeWarrior->elementsBeforeFight;
+        }
         return ;
     }
     
@@ -345,11 +389,11 @@ void CCity::fight()
     }
     when();
     printf("%s %s %d fought back against %s %s %d in city %d\n", sideName[oppositeSide], warriorName[oppositeWarrior->kind], oppositeWarrior->id, sideName[1-oppositeSide], warriorName[currentWarrior->kind], currentWarrior->id, id);
-    currentWarrior->elements -= 0.5*oppositeWarrior->force;// 开始反击
+    currentWarrior->elements = currentWarrior->elements - (int)(0.5*oppositeWarrior->force);// 开始反击double-check
     if (oppositeWarrior->weapons[sword][weaponNumber] > 0)// 有sword
     {
         currentWarrior->elements -= oppositeWarrior->weapons[sword][weaponForce];
-        oppositeWarrior->weapons[sword][weaponForce] *= 0.8;// sword每经过一次战斗(不论是主动攻击还是反击)，就会变钝，攻击力变为本次战斗前的80% (去尾取整)
+        oppositeWarrior->weapons[sword][weaponForce] = 0.8*oppositeWarrior->weapons[sword][weaponForce];//double-check sword每经过一次战斗(不论是主动攻击还是反击)，就会变钝，攻击力变为本次战斗前的80% (去尾取整)
         if (oppositeWarrior->weapons[sword][weaponForce] <= 0)
         {
             oppositeWarrior->weapons[sword][weaponForce] = 0;
@@ -363,6 +407,14 @@ void CCity::fight()
         killHappened[1 - oppositeSide] = 1;
         // delete currentWarrior;
         // warriorInCity[1 - oppositeSide] = NULL;
+        // // 名义上获得生命元
+        // when();
+        // printf("%s %s %d earned %d elements for his headquarter\n",sideName[oppositeSide], warriorName[oppositeWarrior->kind], oppositeWarrior->id, elements);
+        // lion 若是战死，则其战斗前的生命值就会转移到对手身上。被箭射死就不会
+        if (currentWarrior->kind == lion)
+        {
+            oppositeWarrior->elements += currentWarrior->elementsBeforeFight;
+        }
         return ;
     }
 }
@@ -370,7 +422,7 @@ void CCity::fight()
 void CCity::useBomb()
 {
     // 判断战斗结果
-    if (warriorInCity[red] == NULL || warriorInCity[blue] == NULL)// 只有一个warrior
+    if (warriorInCity[red] == NULL || warriorInCity[blue] == NULL || killHappened[red] == 1 || killHappened[blue] == 1)// 只有一个warrior
     {
         return ;
     }
@@ -389,7 +441,7 @@ void CCity::useBomb()
         oppositeWarrior = warriorInCity[red];
         oppositeSide = red;
     }
-    if(/*currentWarrior->weapons[sword][weaponNumber] > 0 && */oppositeWarrior->elements - currentWarrior->force - currentWarrior->weapons[sword][weaponForce] <= 0)// 对方死亡
+    if(/*currentWarrior->weapons[sword][weaponNumber] > 0 && */oppositeWarrior->elements - currentWarrior->force - currentWarrior->weapons[sword][weaponNumber]*currentWarrior->weapons[sword][weaponForce] <= 0)// 对方死亡
     {
         if (oppositeWarrior->weapons[bomb][weaponNumber] > 0)// 拥有bomb的武士，在战斗开始前如果判断自己将被杀死
         {
@@ -398,12 +450,12 @@ void CCity::useBomb()
             delete oppositeWarrior;
             delete currentWarrior;
             warriorInCity[0] = warriorInCity[1] = NULL;
-            return ;
             // 使用bomb和敌人同归于尽
         }
+        return ;// 一方已死战斗结束
     }
     // 对方幸存并反击，ninja 挨打了也从不反击敌人。
-    if(oppositeWarrior->kind != ninja &&/* oppositeWarrior->weapons[sword][weaponNumber] > 0 &&*/ currentWarrior->elements - oppositeWarrior->force - oppositeWarrior->weapons[sword][weaponForce] <= 0)// 对方死亡
+    if(oppositeWarrior->kind != ninja &&/* oppositeWarrior->weapons[sword][weaponNumber] > 0 &&*/ currentWarrior->elements - (int)(0.5*oppositeWarrior->force) - oppositeWarrior->weapons[sword][weaponNumber]*oppositeWarrior->weapons[sword][weaponForce] <= 0)// 对方死亡
     {
         if (currentWarrior->weapons[bomb][weaponNumber] > 0)// 拥有bomb的武士，在战斗开始前如果判断自己将被杀死
         {
@@ -412,9 +464,9 @@ void CCity::useBomb()
             delete oppositeWarrior;
             delete currentWarrior;
             warriorInCity[0] = warriorInCity[1] = NULL;
-            return ;
             // 使用bomb和敌人同归于尽
         }
+        return ;
     }
 }
 
@@ -422,7 +474,7 @@ void CCity::clearBody()
 {
     for (int i = 0; i < 2; i++)// i = side
     {
-        if (killHappened[i] && warriorInCity[i] != NULL)
+        if (killHappened[i] == 1 && warriorInCity[i] != NULL)
         {
             delete warriorInCity[i];
             warriorInCity[i] = NULL;
@@ -489,7 +541,7 @@ void CCity::lionRunAway()
         if (warriorInCity[i] != NULL)
         {
             CWarrior * currentWarrior = warriorInCity[i];
-            if (currentWarrior->kind == lion && currentWarrior->loyalty == 0)
+            if (currentWarrior->kind == lion && currentWarrior->loyalty <= 0)
             {
                 when();
                 printf("%s lion %d ran away\n", sideName[i], currentWarrior->id);
@@ -571,11 +623,15 @@ void CHeadquarter::generateWarrior()
 
 int main()
 {
+    // debug
+    freopen("test.in","r",stdin);
+    freopen("test1.out","w",stdout);
+    
     int t;
     scanf("%d",&t);
     for (int count = 0; count < t; count++)
     {
-        printf("Case %d:\n",count);
+        printf("Case %d:\n",count + 1);
         
         scanf("%d %d %d %d %d",&M, &N, &R, &K, &T);
         for (int i = 0; i < 5; i++)
@@ -592,9 +648,10 @@ int main()
         }
         for (int i = 0; i < N + 2; i++)
         {
-            citys[i].id = i;
+            citys[i].refreash(i);
         }
         finished = 0;
+        mytime = 0;
         while (finished == 0)
         {
             // 武士降生
@@ -603,16 +660,31 @@ int main()
                 headquarters[i]->generateWarrior();
             }
             mytime += 5;
+            if (mytime > T)
+            {
+                break;
+            }
+            
             // lion逃跑
             for (int i = 0; i < N + 2; i++)
             {
                 citys[i].lionRunAway();
             }
             mytime += 5;
+            if (mytime > T)
+            {
+                break;
+            }
 
             // 武士前进到某一城市
-            headquarters[red]->warriorInHeadquarter = citys[0].warriorInCity[blue];
-            headquarters[blue]->warriorInHeadquarter = citys[N + 1].warriorInCity[red];
+            if (headquarters[red]->warriorInHeadquarter == NULL)
+            {
+                headquarters[red]->warriorInHeadquarter = citys[0].warriorInCity[blue];
+            }
+            if (headquarters[blue]->warriorInHeadquarter == NULL)
+            {
+                headquarters[blue]->warriorInHeadquarter = citys[N + 1].warriorInCity[red];
+            }
             for (int i = N + 1; i > 0; i--)// 红方，从N+1号城市开始考虑上一城市武士是否前进
             {
                 citys[i].matchHappened[red] = 0;// 清零记录区
@@ -655,12 +727,20 @@ int main()
             }
             
             mytime += 10;
+            if (mytime > T)
+            {
+                break;
+            }
             // 每个城市产出10个生命元。
             for (int i = 1; i < N + 1; i++)
             {
                 citys[i].addElements();
             }
             mytime += 10;
+            if (mytime > T)
+            {
+                break;
+            }
             // 只有1个武士的话，取走生命元，给司令部
             for (int i = 1; i < N + 1; i++)
             {
@@ -676,12 +756,11 @@ int main()
                 }
             }
             mytime += 5;
-            // 武士放箭
-            for (int i = 1; i < N + 1; i++)
+            if (mytime > T)
             {
-                citys[i].lionRememberElements();
+                break;
             }
-            
+            // 武士放箭
             for (int i = 1; i < N + 1; i++)// 不能攻击对方司令部里的敌人
             {
                 citys[i].shotArrows();
@@ -691,18 +770,32 @@ int main()
             //     citys[i].clearBody();
             // }
             mytime += 3;
+            if (mytime > T)
+            {
+                break;
+            }
+            for (int i = 1; i < N + 1; i++)
+            {
+                citys[i].lionRememberElements();
+            }
             // 武士使用bomb
             for (int i = 1; i < N + 1; i++)// 拥有bomb的武士评估是否应该使用bomb。
             {
                 citys[i].useBomb();
             }
             mytime += 2;
+            if (mytime > T)
+            {
+                break;
+            }
             // 同一时间发生的事件，按发生地点从西向东依次输出. 武士前进的事件, 算是发生在目的地。
             // 在一次战斗中有可能发生上面的 6 至 11 号事件。这些事件都算同时发生，其时间就是战斗开始时间。一次战斗中的这些事件，序号小的应该先输出。
             for (int i = 1; i < N + 1; i++)// 拥有bomb的武士评估是否应该使用bomb。
             {
                 citys[i].fight();// 6-8武士战斗
                 citys[i].dragonYelled();// 9武士欢呼
+                citys[i].declareAwardElements();
+                citys[i].flagRaise();// 11旗帜升起
             }
             for (int i = N; i > 0; i--)
             {
@@ -714,10 +807,14 @@ int main()
             }
             for (int i = 1; i < N + 1; i++)
             {
-                citys[i].getElements();// 10武士获取生命元
-                citys[i].flagRaise();// 11旗帜升起
+                citys[i].getElements();// 10武士事实上获取生命元
+                // citys[i].flagRaise();// 11旗帜升起
             }
             mytime += 10;
+            if (mytime > T)
+            {
+                break;
+            }
             // 司令部报告生命元数量
             for (int i = 0; i < 2; i++)
             {
@@ -725,15 +822,98 @@ int main()
                 printf("%d elements in %s headquarter\n",headquarters[i]->elements, sideName[i]);
             }
             mytime += 5;
-            // 武士报告武器情况
-            for (int i = 0; i < 2; i++)// side
+            if (mytime > T)
             {
-                for (int j = 0; j < N + 2; j++)// city
-                {
-                    citys[j].reportWeapon(i);
-                }
+                break;
             }
+            // 武士报告武器情况
+            for (int j = 0; j < N + 2; j++)// city
+            {
+                citys[j].reportWeapon(red);
+            }
+            
+            if (headquarters[blue]->warriorInHeadquarter != NULL)
+            {
+                when();
+                printf("%s %s %d has ",sideName[red], warriorName[headquarters[blue]->warriorInHeadquarter->kind], headquarters[blue]->warriorInHeadquarter->id);
+                // int ** w = warriorInCity[side]->weapons;
+                bool flag = false;
+                if (headquarters[blue]->warriorInHeadquarter->weapons[arrow][weaponNumber] > 0)
+                {
+                    printf("arrow(%d)",3 - headquarters[blue]->warriorInHeadquarter->weapons[arrow][weaponUsedTime]);
+                    flag = true;
+                }
+                if (headquarters[blue]->warriorInHeadquarter->weapons[bomb][weaponNumber] > 0)
+                {
+                    if (flag)
+                    {
+                        printf(",");
+                    }
+                    printf("bomb");
+                    flag = true;
+                }
+                if (headquarters[blue]->warriorInHeadquarter->weapons[sword][weaponNumber] > 0)
+                {
+                    if (flag)
+                    {
+                        printf(",");
+                    }
+                    printf("sword(%d)",headquarters[blue]->warriorInHeadquarter->weapons[sword][weaponForce]);
+                    flag = true;
+                }
+                if (!flag)
+                {
+                    printf("no weapon");
+                }
+                printf("\n");
+            }
+
+            if (headquarters[red]->warriorInHeadquarter != NULL)
+            {
+                when();
+                printf("%s %s %d has ",sideName[blue], warriorName[headquarters[red]->warriorInHeadquarter->kind], headquarters[red]->warriorInHeadquarter->id);
+                // int ** w = warriorInCity[side]->weapons;
+                bool flag = false;
+                if (headquarters[red]->warriorInHeadquarter->weapons[arrow][weaponNumber] > 0)
+                {
+                    printf("arrow(%d)",3 - headquarters[red]->warriorInHeadquarter->weapons[arrow][weaponUsedTime]);
+                    flag = true;
+                }
+                if (headquarters[red]->warriorInHeadquarter->weapons[bomb][weaponNumber] > 0)
+                {
+                    if (flag)
+                    {
+                        printf(",");
+                    }
+                    printf("bomb");
+                    flag = true;
+                }
+                if (headquarters[red]->warriorInHeadquarter->weapons[sword][weaponNumber] > 0)
+                {
+                    if (flag)
+                    {
+                        printf(",");
+                    }
+                    printf("sword(%d)",headquarters[red]->warriorInHeadquarter->weapons[sword][weaponForce]);
+                    flag = true;
+                }
+                if (!flag)
+                {
+                    printf("no weapon");
+                }
+                printf("\n");
+            }
+
+            for (int j = 0; j < N + 2; j++)// city
+            {
+                citys[j].reportWeapon(blue);
+            }
+
             mytime += 5;
+            if (mytime > T)
+            {
+                break;
+            }
             // 收尾
             for (int i = 0; i < N + 2; i++)
             {
@@ -744,7 +924,6 @@ int main()
         {
             delete headquarters[i];
         }
-        
     }
     
     return 0;
