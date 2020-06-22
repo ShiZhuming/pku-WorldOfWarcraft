@@ -4,6 +4,8 @@
 #io files
 *.input
 *.output
+*.in
+*.out
 
 #debug files
 make*
