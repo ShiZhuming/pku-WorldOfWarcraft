@@ -1,6 +1,8 @@
-#World of Warcraft
-Lab work of pku course Practice of Programming in C&C++ 2019 spring.
+# World of Warcraft
+
+Homework of pku course Practice of Programming in C&C++ 2019 spring.
 Online judgement is on [OpenJudge](http://cxsjsx.openjudge.cn).
+
 Four versions in total.
 * [version 1](http://cxsjsx.openjudge.cn/warcraft201901/A/)   
 * [version 2](http://cxsjsx.openjudge.cn/warcraft201902/A/)   
